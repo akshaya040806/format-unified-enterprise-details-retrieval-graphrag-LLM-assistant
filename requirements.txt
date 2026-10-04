@@ -1,0 +1,9 @@
+groq
+chromadb
+sentence-transformers
+networkx
+streamlit
+ollama
+requests
+faker
+torchvision
