@@ -78,7 +78,7 @@ rm -rf chroma_store/
 streamlit run app.py
 ```
 
-## What the RAG uses
+## What the GraphRAG uses (our novelty basically)
 
 - **Chunking**: Hierarchical (S5 — best for conversational/chat data)
   - Parent chunks ~400 tokens (context)
@@ -87,5 +87,5 @@ streamlit run app.py
 - **Vector store**: ChromaDB (local, persistent)
 - **Knowledge graph**: NetworkX (entity co-occurrence)
 - **Retrieval**: Reciprocal Rank Fusion of vector + graph results
-- **Generation**: Groq API, llama-3.3-70b-versatile
-- **Confidence scoring**: RRF score + entity overlap
+- **Generation**: Groq API, llama-3.3-70b-versatile, Ollama Phi3
+- **Confidence scoring**: RRF score + entity overlap in Backend terminal
