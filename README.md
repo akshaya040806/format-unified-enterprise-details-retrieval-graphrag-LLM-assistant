@@ -1,9 +1,28 @@
 # Format-Unified GraphRAG — Knowledge Assistant
 
+## Virtual Environment Setup (one time)
+
+```bash
+python -m venv rag_env
+rag_env\Scripts\activate
+```
+
 ## Setup (one time)
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Get the API key from Groq for the dataset generation
+
+```powershell
+$env:GROQ_API_KEY="your_key_here"
+```
+
+## Run the generator code for datasets (one time)
+
+```bash
+python generator.py
 ```
 
 ## Place your dataset
@@ -31,10 +50,12 @@ with open('rag_system/data/_all_conversations.json', 'w') as f:
     json.dump(combined, f)
 ```
 
-## Set your API key
+## Download the Ollama Desktop Version and get the phi3 in powershell and verify
 
 ```powershell
-$env:GROQ_API_KEY="your_key_here"
+ollama pull phi3
+ollama list
+ollama run phi3 "say hello"
 ```
 
 ## Run
