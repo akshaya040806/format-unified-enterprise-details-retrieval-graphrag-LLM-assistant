@@ -17,14 +17,22 @@ DATA_DIR         = "./data"
 PARENT_SIZE  = 400   
 CHILD_SIZE   = 100  
 OVERLAP      = 20  
-TOP_K_VECTOR = 8   
+TOP_K_VECTOR = 15  
 TOP_K_GRAPH  = 4   
-TOP_K_FINAL  = 6     
+TOP_K_FINAL  = 10
 
 print("Loading embedding model...")
 embedder = SentenceTransformer(EMBED_MODEL_NAME)
 
-chroma = chromadb.PersistentClient(path=CHROMA_PATH)
+# Connect to the ChromaDB SERVER (run separately with: chroma run --path ./chroma_store --port 8000)
+# Falls back to embedded mode if the server isn't running.
+try:
+    chroma = chromadb.HttpClient(host="localhost", port=8000)
+    chroma.heartbeat()  # test the connection
+    print("Connected to ChromaDB server on port 8000 (live mode).")
+except Exception:
+    print("ChromaDB server not found — using embedded mode (restart needed for re-index).")
+    chroma = chromadb.PersistentClient(path=CHROMA_PATH)
 child_col  = chroma.get_or_create_collection("child_chunks")
 parent_col = chroma.get_or_create_collection("parent_chunks")
 
@@ -372,7 +380,7 @@ Rules:
 4. If a specific number, date, or decision is in the context, state it explicitly.
 5. If the context does not contain the answer, say clearly: "I don't have that information in the available project communications."
 6. Never make up information that isn't in the context.
-7. Keep answers concise but complete — a new employee should understand it on first read."""
+7. Keep answers concise — maximum 5-6 short points. Do not repeat information. If listing items, list each only once. Stop when you have covered the key facts."""
 
 def generate_answer(query: str, context_chunks: List[dict]) -> Tuple[str, List[dict]]:
     if not context_chunks:
@@ -403,10 +411,16 @@ Answer:"""
     response = requests.post(
         "http://localhost:11434/api/generate",
         json={
-            "model": "phi3",
+            "model": "qwen2.5:0.5b",
             "prompt": prompt,
-            "stream": False
-        }
+            "stream": False,
+            "think": False,
+            "options": {
+                "temperature": 0.3,
+                "num_predict": 600,
+            }
+        },
+        timeout=120
     )
     answer = response.json()["response"].strip()
     return answer, context_chunks
@@ -453,6 +467,35 @@ def ask(query: str) -> dict:
         "confidence":     confidence,
         "graph_entities": query_entities,
     }
+
+
+def reindex_live(data_file: str = None):
+    """
+    Live re-index WITHOUT deleting files or restarting.
+    Works when ChromaDB is running as a server.
+    Clears both collections via the API, then rebuilds from the dataset.
+    """
+    global child_col, parent_col, knowledge_graph
+    import networkx as nx
+
+    # Delete and recreate collections (works over HTTP, no file lock)
+    try:
+        chroma.delete_collection("child_chunks")
+    except Exception:
+        pass
+    try:
+        chroma.delete_collection("parent_chunks")
+    except Exception:
+        pass
+
+    child_col  = chroma.get_or_create_collection("child_chunks")
+    parent_col = chroma.get_or_create_collection("parent_chunks")
+    knowledge_graph = nx.DiGraph()
+
+    # Rebuild from scratch
+    index_dataset(data_file)
+    print("Live re-index complete.")
+
 
 if __name__ == "__main__":
     # Quick CLI test
